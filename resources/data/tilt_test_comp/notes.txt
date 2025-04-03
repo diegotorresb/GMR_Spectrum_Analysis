@@ -1,0 +1,11 @@
+3/25/2025
+First run of measurements
+up unitl 6 ccw did not turn for 6.5ccw
+
+3/27/2025
+Second run of measurements
+starting on 6.5 ccw finished on 11ccw
+
+3/28/2025
+Third run of measurements
+starting on 11.5ccw finished range (21ccw)

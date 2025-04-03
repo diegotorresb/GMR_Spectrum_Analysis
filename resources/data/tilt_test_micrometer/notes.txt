@@ -1,0 +1,11 @@
+fine angle adjustment; will do CW turns
+1 tick ~ 0.275 mrad
+Goal
+
+3/31/2025
+Starting measurements
+start in 0 ticks end in 20 ticks (30 mark)
+
+4/02/2025
+start in 21 ticks (31 mark) end at 35 ticks (15 mark)
+pt. 2 start at 36 ticks (14 mark) end at 61 ticks (39 mark)
