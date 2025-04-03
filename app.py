@@ -29,25 +29,29 @@ def parse_spectrometer_data(file_path):
         data_started = False
         for line in file:
             line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                continue
+            
             # Check if data starts
             if not data_started:
                 if line.startswith('[nm]'):
                     data_started = True
-                    continue  # Skip the header line with units
-            else:
-                if not line:
-                    continue  # Skip empty lines
-                parts = line.split(';')
-                if len(parts) >= 2:
-                    try:
-                        # Extract and convert wavelength and sample values
-                        wavelength = float(parts[0].strip())
-                        sample = float(parts[1].strip())
-                        wavelengths.append(wavelength)
-                        samples.append(sample)
-                    except ValueError:
-                        # Skip lines that cannot be parsed
-                        continue
+                continue  # Skip the header line with units
+            
+            # Process data lines
+            parts = line.split(';')
+            if len(parts) >= 2:
+                try:
+                    # Extract and convert wavelength and sample values
+                    wavelength = float(parts[0].strip())
+                    sample = float(parts[1].strip())
+                    wavelengths.append(wavelength)
+                    samples.append(sample)
+                except ValueError:
+                    # Skip lines that cannot be parsed
+                    continue
 
     # Combine the wavelength and sample data into a single NumPy array
     data = np.column_stack((wavelengths, samples))
@@ -295,42 +299,64 @@ def plot_contour_to_figure(data_dict, title_suffix, min_wl=None, max_wl=None, mi
     
     return fig, wavelengths, angles, transmittance_data
 
-def plot_slices(wavelengths, angles, transmittance_data, selected_wavelengths, selected_angles, gmr_type):
+def plot_slices(wavelengths, angles, transmittance, selected_wls, selected_angles, gmr_label, trans_range=None):
     """
-    Creates line plots for the selected wavelength and angle slices
+    Creates plots for selected wavelength and angle slices.
+    
+    Args:
+        wavelengths (np.array): Array of wavelength values
+        angles (np.array): Array of angle values
+        transmittance (np.array): 2D array of transmittance values
+        selected_wls (list): List of selected wavelengths for plotting
+        selected_angles (list): List of selected angles for plotting
+        gmr_label (str): Label indicating "Left" or "Right" GMR
+        trans_range (tuple): Optional (min, max) range for transmittance axis
+    
+    Returns:
+        matplotlib.figure.Figure: Figure containing the slice plots
     """
-    fig = Figure(figsize=(12, 6))
-    ax1 = fig.add_subplot(121)  # T vs θ
-    ax2 = fig.add_subplot(122)  # T vs λ
+    fig = plt.figure(figsize=(12, 6))
     
-    # Plot vertical slices (T vs θ)
-    for wl in selected_wavelengths:
-        idx_wl = np.abs(wavelengths - wl).argmin()
-        ax1.plot(angles, transmittance_data[:, idx_wl], linewidth=1.5, 
-                label=f'λ = {wavelengths[idx_wl]:.1f} nm')
-    
-    # Plot horizontal slices (T vs λ)
-    for angle in selected_angles:
-        idx_angle = np.abs(angles - angle).argmin()
-        ax2.plot(wavelengths, transmittance_data[idx_angle, :], linewidth=1.5,
-                label=f'θ = {angles[idx_angle]:.2f} mrad')
-    
-    # Configure plots
-    ax1.set_xlabel('Angle Position (mrad)')
-    ax1.set_ylabel('Transmittance')
-    ax1.set_title(f'{gmr_type} GMR: T(θ)')
-    ax1.grid(True)
-    ax1.set_ylim([0.0, 1.2])
-    ax1.legend()
-    
-    ax2.set_xlabel('Wavelength (nm)')
-    ax2.set_ylabel('Transmittance')
-    ax2.set_title(f'{gmr_type} GMR: T(λ)')
-    ax2.grid(True)
-    ax2.set_ylim([0.0, 1.2])
-    ax2.legend()
-    
-    fig.tight_layout()
+    # Create two subplots side by side
+    if selected_wls and selected_angles:
+        ax1 = plt.subplot(121)
+        ax2 = plt.subplot(122)
+    elif selected_wls:
+        ax1 = plt.subplot(111)
+    elif selected_angles:
+        ax2 = plt.subplot(111)
+    else:
+        return fig
+
+    # Plot wavelength slices (Transmittance vs Angle)
+    if selected_wls:
+        for wl in selected_wls:
+            wl_idx = np.abs(wavelengths - wl).argmin()
+            ax1.plot(angles, transmittance[:, wl_idx], label=f'{wl:.1f} nm')
+        
+        ax1.set_xlabel('Angle (mrad)')
+        ax1.set_ylabel('Transmittance')
+        ax1.set_title(f'{gmr_label} GMR - Fixed Wavelength Slices')
+        if trans_range is not None:
+            ax1.set_ylim(trans_range)
+        ax1.legend()
+        ax1.grid(True)
+
+    # Plot angle slices (Transmittance vs Wavelength)
+    if selected_angles:
+        for angle in selected_angles:
+            angle_idx = np.abs(angles - angle).argmin()
+            ax2.plot(wavelengths, transmittance[angle_idx, :], label=f'{angle:.2f} mrad')
+        
+        ax2.set_xlabel('Wavelength (nm)')
+        ax2.set_ylabel('Transmittance')
+        ax2.set_title(f'{gmr_label} GMR - Fixed Angle Slices')
+        if trans_range is not None:
+            ax2.set_ylim(trans_range)
+        ax2.legend()
+        ax2.grid(True)
+
+    plt.tight_layout()
     return fig
 
 def plot_single_spectrum(data_dict, angle, gmr_type, min_wl=None, max_wl=None):
@@ -593,24 +619,8 @@ def main():
                     
                     # Create angle selection for slices
                     if angles_left is not None:
-                        st.write("### Slice Analysis")
-                        angle_options = np.sort(angles_left)
-                        selected_angles = st.multiselect(
-                            "Select angles for slice plots (mrad)", 
-                            options=angle_options,
-                            format_func=lambda x: f"{x:.2f}")
-                        
-                        wavelength_options = wl_left
-                        selected_wls = st.multiselect(
-                            "Select wavelengths for slice plots (nm)",
-                            options=wavelength_options,
-                            format_func=lambda x: f"{x:.1f}")
-                        
-                        if selected_angles or selected_wls:
-                            slice_fig = plot_slices(
-                                wl_left, angles_left, trans_left,
-                                selected_wls, selected_angles, "Left")
-                            st.image(fig_to_image(slice_fig))
+                        display_slice_analysis(wl_left, angles_left, trans_left, "Left", 
+                                             trans_range=(transmittance_range[0], transmittance_range[1]))
             
             if gmr_selection in ["Right", "Both"] and data_dict_right:
                 with col2:
@@ -624,26 +634,8 @@ def main():
                     
                     # Create angle selection for slices
                     if angles_right is not None:
-                        st.write("### Slice Analysis")
-                        angle_options = np.sort(angles_right)
-                        selected_angles = st.multiselect(
-                            "Select angles for slice plots (mrad)", 
-                            options=angle_options,
-                            format_func=lambda x: f"{x:.2f}",
-                            key="right_angles")
-                        
-                        wavelength_options = wl_right
-                        selected_wls = st.multiselect(
-                            "Select wavelengths for slice plots (nm)",
-                            options=wavelength_options,
-                            format_func=lambda x: f"{x:.1f}",
-                            key="right_wls")
-                        
-                        if selected_angles or selected_wls:
-                            slice_fig = plot_slices(
-                                wl_right, angles_right, trans_right,
-                                selected_wls, selected_angles, "Right")
-                            st.image(fig_to_image(slice_fig))
+                        display_slice_analysis(wl_right, angles_right, trans_right, "Right",
+                                             trans_range=(transmittance_range[0], transmittance_range[1]))
         elif not available_folders:
             st.warning("No folders found in the specified base directory.")
         else:
@@ -674,24 +666,8 @@ def main():
                                 
                                 # Create angle selection for slices
                                 if angles_left is not None:
-                                    st.write("### Slice Analysis")
-                                    angle_options = np.sort(angles_left)
-                                    selected_angles = st.multiselect(
-                                        "Select angles for slice plots (mrad)", 
-                                        options=angle_options,
-                                        format_func=lambda x: f"{x:.2f}")
-                                    
-                                    wavelength_options = wl_left
-                                    selected_wls = st.multiselect(
-                                        "Select wavelengths for slice plots (nm)",
-                                        options=wavelength_options,
-                                        format_func=lambda x: f"{x:.1f}")
-                                    
-                                    if selected_angles or selected_wls:
-                                        slice_fig = plot_slices(
-                                            wl_left, angles_left, trans_left,
-                                            selected_wls, selected_angles, "Left")
-                                        st.image(fig_to_image(slice_fig))
+                                    display_slice_analysis(wl_left, angles_left, trans_left, "Left", 
+                                                         trans_range=(transmittance_range[0], transmittance_range[1]))
                         
                         if gmr_selection in ["Right", "Both"] and data_dict_right:
                             with col2:
@@ -705,23 +681,67 @@ def main():
                                 
                                 # Create angle selection for slices
                                 if angles_right is not None:
-                                    st.write("### Slice Analysis")
-                                    angle_options = np.sort(angles_right)
-                                    selected_angles = st.multiselect(
-                                        "Select angles for slice plots (mrad)", 
-                                        options=angle_options,
-                                        format_func=lambda x: f"{x:.2f}",
-                                        key="right_angles")
-                                    
-                                    wavelength_options = wl_right
-                                    selected_wls = st.multiselect(
-                                        "Select wavelengths for slice plots (nm)",
-                                        options=wavelength_options,
-                                        format_func=lambda x: f"{x:.1f}",
-                                        key="right_wls")
-                                    
-                                    if selected_angles or selected_wls:
-                                        slice_fig = plot_slices(
-                                            wl_right, angles_right, trans_right,
-                                            selected_wls, selected_angles, "Right")
-                                        st.image(fig_to_image(slice_fig))
+                                    display_slice_analysis(wl_right, angles_right, trans_right, "Right",
+                                                         trans_range=(transmittance_range[0], transmittance_range[1]))
+
+def display_slice_analysis(wl, angles, trans, gmr_label, trans_range):
+    st.write("### Slice Analysis")
+    
+    # Initialize session state keys if they don't exist
+    state_key_angles = f"selected_angles_{gmr_label.lower()}"
+    state_key_wls = f"selected_wls_{gmr_label.lower()}"
+    
+    if state_key_angles not in st.session_state:
+        st.session_state[state_key_angles] = []
+    if state_key_wls not in st.session_state:
+        st.session_state[state_key_wls] = []
+    
+    # Convert lists to numpy arrays if needed
+    wl = np.array(wl) if not isinstance(wl, np.ndarray) else wl
+    angles = np.array(angles) if not isinstance(angles, np.ndarray) else angles
+    trans = np.array(trans) if not isinstance(trans, np.ndarray) else trans
+    
+    # Ensure data is sorted
+    angle_options = np.sort(angles)
+    wavelength_options = np.sort(wl)
+    
+    # Add key suffix to avoid duplicate keys between Left/Right GMR
+    key_suffix = "_" + gmr_label.lower()
+    
+    # Use session state for the multiselect widgets
+    selected_angles = st.multiselect(
+        f"Select angles for {gmr_label} GMR slice plots (mrad)", 
+        options=angle_options.tolist(),
+        default=st.session_state[state_key_angles],
+        format_func=lambda x: f"{x:.2f}",
+        key=f"angles{key_suffix}",
+        on_change=lambda: setattr(st.session_state, state_key_angles, 
+                                st.session_state[f"angles{key_suffix}"]))
+    
+    selected_wls = st.multiselect(
+        f"Select wavelengths for {gmr_label} GMR slice plots (nm)",
+        options=wavelength_options.tolist(),
+        default=st.session_state[state_key_wls],
+        format_func=lambda x: f"{x:.1f}",
+        key=f"wls{key_suffix}",
+        on_change=lambda: setattr(st.session_state, state_key_wls, 
+                                st.session_state[f"wls{key_suffix}"]))
+    
+    if selected_angles or selected_wls:
+        try:
+            slice_fig = plot_slices(wl, angles, trans, selected_wls, selected_angles, gmr_label, trans_range)
+            st.pyplot(slice_fig)
+        except Exception as e:
+            st.error(f"Error creating slice plots: {str(e)}")
+            st.write("Debug info:", {
+                "Selected angles": selected_angles,
+                "Selected wavelengths": selected_wls,
+                "Data ranges": {
+                    "Wavelength": [float(wl.min()), float(wl.max())],
+                    "Angles": [float(angles.min()), float(angles.max())],
+                    "Transmittance": [float(trans.min()), float(trans.max())]
+                }
+            })
+
+if __name__ == "__main__":
+    main()
