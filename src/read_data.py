@@ -54,7 +54,7 @@ def parse_spectrometer_data(file_path):
 def read_data(comp_plots, mult_plots):
 
     # File paths
-    folder_path = 'tilt_test/4cw_turns'
+    folder_path = 'luke_test/try1'
 
     file_source_right = 'resources/data/'+folder_path+'/membrane.TXT'
     file_source_left = 'resources/data/'+folder_path+'/membrane.TXT'

@@ -1,6 +1,6 @@
-from src.read_data import read_data
-from src.read_data_contour_fine_adjustment import plot_contour
-from src.read_data_contour_fine_adjustment import read_data_from_folder
+from src.read_data_luke import read_data
+from src.read_data_contour import plot_contour
+from src.read_data_contour import read_data_from_folder
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,7 +20,7 @@ def create_dict_from_merged(merged_file):
     return data_dict
 
 def main():
-    # Load and convert merged data to dictionary format
+    # # Load and convert merged data to dictionary format
     # left_dict = create_dict_from_merged('left_gmr_merged.npz')
     # right_dict = create_dict_from_merged('right_gmr_merged.npz')
     
@@ -39,16 +39,16 @@ def main():
     #          ha='center', fontsize=10)
     
     
-    # Plot micrometer test data
-    fig2, (ax3, ax4) = plt.subplots(1, 2, figsize=(18, 6))
+    # # Plot micrometer test data
+    # fig2, (ax3, ax4) = plt.subplots(1, 2, figsize=(18, 6))
     
-    # Read micrometer test data
-    master_folder = 'resources/data/tilt_test_micrometer'
-    data_dict_left_micro, data_dict_right_micro = read_data_from_folder(master_folder)
+    # # Read micrometer test data
+    # master_folder = 'resources/data/tilt_test_micrometer'
+    # data_dict_left_micro, data_dict_right_micro = read_data_from_folder(master_folder)
     
-    # Plot micrometer test data
-    plot_contour(data_dict_left_micro, 'Left GMR (Micrometer)', ax3)
-    plot_contour(data_dict_right_micro, 'Right GMR (Micrometer)', ax4)
+    # # Plot micrometer test data
+    # plot_contour(data_dict_left_micro, 'Left GMR (Micrometer)', ax3)
+    # plot_contour(data_dict_right_micro, 'Right GMR (Micrometer)', ax4)
     
     # # Add instructions text for micrometer data
     # fig2.text(0.5, 0.02, 
@@ -56,9 +56,10 @@ def main():
     #          ha='center', fontsize=10)
 
 
-    plt.tight_layout()
+    # plt.tight_layout()
     
-    plt.show()
+    # plt.show()
+    read_data(True)
 
 if __name__ == '__main__':
     main()
